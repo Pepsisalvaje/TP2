@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+  <title>DVN Voting</title>
+
+  <!-- Bootstrap -->
+  <link href="css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/styles.css" rel="stylesheet">
+
+  <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+  <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+  <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+</head>
+
+<body>
+  <div class="container" style="width: 650px;">
+    <div class="row">
+      <div class="col-lg-12">
+        <div class="row">
+          <h1 class="text-center"><span id="tag">DVN </span>Election Results</h1>
+          <h1 class="text-end">Live</h1>
+        </div>
+        <hr />
+        <br />
+        <div id="loader">
+          <p class="text-center">Loading...</p>
+        </div>
+        <div id="content" style="display: none;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th scope="col">#ID</th>
+                <th scope="col">Candidate Name</th>
+                <th scope="col">Vote Count</th>
+              </tr>
+            </thead>
+            <tbody id="candidatesResults">
+            </tbody>
+          </table>
+          <hr />
+          <form onSubmit="App.castVote(); return false;">
+            <div class="form-group">
+              <label for="candidatesSelect">Select Candidate</label>
+              <select class="form-control" id="candidatesSelect">
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Vote</button>
+            <div id="note">Please note that vote once recorded cannot be changed!</div>
+            <hr />
+          </form>
+          <div id="voteStatus" style="display: none;">Your vote has been recorded.</div>
+          <div id="accountAddress" class="text-center"></div>
+
+          <button  class="sendVoto btn" id="sendVoto">Voto2</button>
+
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-connect">
+    <button class="btn-connect" id="btn-connect" onclick="connect();">Connect</button>
+  </div>
+  <button id="connectButton">Connect to MetaMask</button>clear
+  <div class="container-connect">
+    <button class="btn-permisos" id="btn-permisos" onclick="requestPermissions();">Permisos</button>
+  </div>
+
+  <button class="enableEthereumButton btn">Enable Ethereum</button>
+<button class="sendEthButton btn">Send ETH</button>
+
+
+
+  <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+  <!-- Include all compiled plugins (below), or include individual files as needed -->
+  <script src="js/bootstrap.min.js"></script>
+  <script src="js/web3.min.js"></script>
+  <script src="js/truffle-contract.js"></script>
+  <script src="js/app.js"></script>
+  <script src="https://unpkg.com/@metamask/detect-provider/dist/detect-provider.min.js"></script>
+
+  <script>
+    //Obteniendo cuentas
+    console.log("obteniendo cuentas")
+    var accounts = [];
+    async function getAccount() {
+      accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+      console.log("Cuentas : ",accounts)
+
+      //boton voto 2
+   
+      console.log(accounts) 
+      var sendVoto = document.getElementById("sendVoto")
+      sendVoto.addEventListener('click', () => {
+        const candidateId = $('#candidatesSelect').val(); // Aquí va el ID del candidato al que quieres votar
+        
+        App.contracts.Election.deployed().then(function (instance){
+          instance.vote(candidateId, { from: accounts[0] })
+        }).then((receipt) => {
+          console.log(receipt);
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+      
+      })
+    }
+    getAccount();
+  
+   //boton connect
+    document.getElementById('connectButton', connect);
+
+    function connect() {
+      ethereum
+        .request({ method: 'eth_requestAccounts', params: [{ eth_accounts: {} }] } )
+        .then(handleAccountsChanged =>{
+          var btn = document.getElementById("btn-connect");
+          window.location.reload();
+          btn.innerText="Disconnect"
+        })
+        .catch((error) => {
+          if (error.code === 4001) {
+            // EIP-1193 userRejectedRequest error
+            console.log('Please connect to MetaMask.');
+          } else {
+            console.error(error);
+          }
+        });
+    }
+
+    //boton request permissions
+    document.getElementById('requestPermissionsButton', requestPermissions);
+    
+    async function requestPermissions() {
+      accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+      ethereum
+        .request({
+          jsonrpc:'2.0',
+          method: 'wallet_requestPermissions',
+          params: [{ eth_accounts: {}  }],
+          id:0
+        })
+        .then((permissions) => {
+          const accountsPermission = permissions.find(
+            (permission) => permission.parentCapability === 'eth_accounts'
+          );
+          if (accountsPermission) {
+            console.log('eth_accounts permission successfully requested!');
+          }
+        })
+        .catch((error) => {
+          if (error.code === 4001) {
+            // EIP-1193 userRejectedRequest error
+            console.log('Permissions needed to continue.');
+          } else {
+            console.error(error);
+          }
+        });
+    }
+  
+    //Connect button
+    const connectButton = document.querySelector('#connectButton');
+
+    connectButton.addEventListener('click', async () => {
+      console.log("clicked")
+        // Detectamos la instancia de MetaMask
+      const provider = await detectEthereumProvider();
+      
+      // Si MetaMask está instalado y conectado, se mostrará una ventana emergente para que el usuario permita la conexión.
+      if (provider) {
+        // Conectamos a la red de Ethereum
+        await provider.request({ method: 'eth_requestAccounts' });
+        
+        // Obtenemos la identidad del usuario de MetaMask
+        const accounts = await provider.request({ method: 'eth_accounts' });
+        
+        // La identidad del usuario de MetaMask está en la primera posición del array de cuentas
+        const userAccount = accounts[0];
+        
+        // Hacemos algo con la identidad del usuario, como enviarla al contrato inteligente para registrar su voto.
+      } else {
+        console.error('MetaMask not installed');
+      }
+    });
+
+    //enable eth
+    const ethereumButton = document.querySelector('.enableEthereumButton');
+    const sendEthButton = document.querySelector('.sendEthButton');
+
+
+    // Send Ethereum to an address
+    sendEthButton.addEventListener('click', () => {
+      ethereum
+        .request({
+          method: 'eth_sendTransaction',
+          params: [
+            {
+              from: accounts[0], // The user's active address.
+              to: '0x2f318C334780961FB129D2a6c30D0763d9a5C970', // Required except during contract publications.
+              value: '0x29a2241af62c0000', // Only required to send ether to the recipient from the initiating external account.
+              gasPrice: '0x09184e72a000', // Customizable by the user during MetaMask confirmation.
+              gas: '0x2710', // Customizable by the user during MetaMask confirmation.
+            },
+          ],
+        })
+        .then((txHash) => console.log(txHash))
+        .catch((error) => console.error(error));
+      
+    });
+
+    ethereumButton.addEventListener('click', () => {
+      console.log("Enabled Eth")
+      getAccount();
+    });
+
+    
+  </script>
+</body>
+
+</html>
